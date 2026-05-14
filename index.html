@@ -10,9 +10,10 @@
     .btn { display: block; padding: 15px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); -webkit-appearance: none; }
     .btn:active { background-color: #3367D6; }
     input[type="file"] { display: none; }
-    #display-area { width: 100%; max-width: 500px; margin: 0 auto; background: #fff; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ddd; min-height: 300px; display: flex; align-items: center; justify-content: center; }
-    img, iframe { width: 100%; border: none; display: none; border-radius: 4px; height: 400px; object-fit: contain; }
+    #display-area { width: 100%; max-width: 500px; margin: 0 auto; background: #fff; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ddd; min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    img, iframe { width: 100%; border: none; display: none; border-radius: 4px; height: 400px; object-fit: contain; margin-bottom: 10px; }
     #placeholder { color: #999; line-height: 1.5; }
+    #status-message { font-size: 14px; font-weight: bold; color: #0f9d58; margin-top: 10px; display: none; }
   </style>
 </head>
 <body>
@@ -28,21 +29,32 @@
     <span id="placeholder">ここに結果が表示されます</span>
     <img id="image-display" src="">
     <iframe id="map-display" src=""></iframe>
+    <div id="status-message"></div>
   </div>
 
   <script>
     const imgEl = document.getElementById('image-display');
     const mapEl = document.getElementById('map-display');
     const placeholder = document.getElementById('placeholder');
+    const statusMessage = document.getElementById('status-message');
+
+    function resetDisplay() {
+      imgEl.style.display = 'none';
+      mapEl.style.display = 'none';
+      statusMessage.style.display = 'none';
+      placeholder.style.display = 'block';
+      placeholder.innerHTML = "処理中...";
+    }
 
     function handleImage(e) {
       const file = e.target.files[0];
       if (!file) return;
+      resetDisplay();
+      
       const reader = new FileReader();
       reader.onload = (event) => {
         imgEl.src = event.target.result;
         imgEl.style.display = 'block';
-        mapEl.style.display = 'none';
         placeholder.style.display = 'none';
       };
       reader.readAsDataURL(file);
@@ -57,15 +69,12 @@
         return; 
       }
       
+      resetDisplay();
       placeholder.innerHTML = "📍 位置情報を取得中...<br><small>※iPhoneの場合は数秒〜15秒ほどかかることがあります</small>";
-      imgEl.style.display = 'none';
-      mapEl.style.display = 'none';
-      placeholder.style.display = 'block';
 
-      // iPhoneでタイムアウトしにくいようにオプションを調整
       const options = {
-        enableHighAccuracy: false, // 高精度要求を一旦オフ（取得スピード優先）
-        timeout: 15000,            // タイムアウトを15秒に延長
+        enableHighAccuracy: false, 
+        timeout: 15000,            
         maximumAge: 0
       };
 
@@ -73,12 +82,48 @@
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          mapEl.src = `https://maps.google.com/maps?q=${lat},${lng}&output=embed&z=15&hl=ja`;
+          
+          // 画面表示用の埋め込みURL
+          const embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&output=embed&z=15&hl=ja`;
+          // スプレッドシート記録用の通常のURL
+          const mapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ja`;
+
+          mapEl.src = embedUrl;
           mapEl.style.display = 'block';
           placeholder.style.display = 'none';
+          
+          // バックエンドへの送信ステータスを表示
+          statusMessage.textContent = "📝 スプレッドシートに記録中...";
+          statusMessage.style.display = 'block';
+          statusMessage.style.color = '#555';
+
+          // ★GASのWebアプリURL（デプロイして発行されたURLに書き換えてください）
+          const gasUrl = 'https://script.google.com/macros/s/AKfycbxvbIEtLq4F4JI-fDn9B2xGuLyioJLHOon_Ir2hHvXmjSc7SfgBjLc8dJ9LJ4t9Pt_u/exec';
+          
+          // JSONPを利用したクロスドメイン通信
+          const callbackName = 'jsonpCallback_' + Date.now();
+          window[callbackName] = function(response) {
+            if (response.status === "success") {
+              statusMessage.textContent = "✅ スプレッドシートに記録しました！";
+              statusMessage.style.color = '#0f9d58';
+            } else {
+              statusMessage.textContent = "❌ 記録失敗: " + response.message;
+              statusMessage.style.color = '#d23f31';
+            }
+            setTimeout(() => { statusMessage.style.display = 'none'; }, 3000);
+            
+            // 実行後の後始末
+            delete window[callbackName];
+            const scriptEl = document.getElementById(callbackName);
+            if(scriptEl) scriptEl.remove();
+          };
+
+          const script = document.createElement('script');
+          script.id = callbackName;
+          script.src = `${gasUrl}?mapUrl=${encodeURIComponent(mapUrl)}&callback=${callbackName}`;
+          document.body.appendChild(script);
         },
         (err) => {
-          // エラーコードに応じて詳細なメッセージを表示
           let errorMsg = "位置情報の取得に失敗しました。\n\n";
           if (err.code === 1) {
             errorMsg += "原因: 位置情報の利用が許可されていません。\niPhoneの「設定」>「Safari」>「位置情報」を確認してください。";
