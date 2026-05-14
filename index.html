@@ -142,8 +142,6 @@
         alert("ログインしてください。");
         return;
       }
-      // Firebaseから取得した表示名(またはメールアドレス)を使用
-      const userName = currentUser.displayName || currentUser.email;
 
       if (!navigator.geolocation) { 
         alert("お使いのブラウザはGPSに非対応です。"); 
@@ -160,7 +158,7 @@
       };
 
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           
@@ -175,31 +173,40 @@
           statusMessage.style.display = 'block';
           statusMessage.style.color = '#555';
 
-          // ★GASのWebアプリURL
-          const gasUrl = 'https://script.google.com/macros/s/AKfycbxvbIEtLq4F4JI-fDn9B2xGuLyioJLHOon_Ir2hHvXmjSc7SfgBjLc8dJ9LJ4t9Pt_u/exec';
-          
-          const callbackName = 'jsonpCallback_' + Date.now();
-          window[callbackName] = function(response) {
-            if (response.status === "success") {
-              statusMessage.textContent = "✅ スプレッドシートに記録しました！";
-              statusMessage.style.color = '#0f9d58';
-            } else {
-              statusMessage.textContent = "❌ 記録失敗: " + response.message;
-              statusMessage.style.color = '#d23f31';
-            }
-            setTimeout(() => { statusMessage.style.display = 'none'; }, 3000);
-            
-            delete window[callbackName];
-            const scriptEl = document.getElementById(callbackName);
-            if(scriptEl) scriptEl.remove();
-          };
+          try {
+            // ★ Firebaseから最新のIDトークン（JWT）を取得する
+            const idToken = await currentUser.getIdToken(true);
 
-          const script = document.createElement('script');
-          script.id = callbackName;
-          
-          // mapUrl に加えて userName もパラメータとして送信するよう変更
-          script.src = `${gasUrl}?mapUrl=${encodeURIComponent(mapUrl)}&user=${encodeURIComponent(userName)}&callback=${callbackName}`;
-          document.body.appendChild(script);
+            // ★GASのWebアプリURL
+            const gasUrl = 'https://script.google.com/macros/s/AKfycbxvbIEtLq4F4JI-fDn9B2xGuLyioJLHOon_Ir2hHvXmjSc7SfgBjLc8dJ9LJ4t9Pt_u/exec';
+            
+            const callbackName = 'jsonpCallback_' + Date.now();
+            window[callbackName] = function(response) {
+              if (response.status === "success") {
+                statusMessage.textContent = "✅ スプレッドシートに記録しました！";
+                statusMessage.style.color = '#0f9d58';
+              } else {
+                statusMessage.textContent = "❌ 記録失敗: " + response.message;
+                statusMessage.style.color = '#d23f31';
+              }
+              setTimeout(() => { statusMessage.style.display = 'none'; }, 3000);
+              
+              delete window[callbackName];
+              const scriptEl = document.getElementById(callbackName);
+              if(scriptEl) scriptEl.remove();
+            };
+
+            const script = document.createElement('script');
+            script.id = callbackName;
+            
+            // ★ userNameの代わりにトークンを送信するように変更
+            script.src = `${gasUrl}?mapUrl=${encodeURIComponent(mapUrl)}&token=${encodeURIComponent(idToken)}&callback=${callbackName}`;
+            document.body.appendChild(script);
+
+          } catch (tokenError) {
+             statusMessage.textContent = "❌ 認証エラー: " + tokenError.message;
+             statusMessage.style.color = '#d23f31';
+          }
         },
         (err) => {
           let errorMsg = "位置情報の取得に失敗しました。\n\n";
