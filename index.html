@@ -10,6 +10,14 @@
     .btn { display: block; padding: 15px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); -webkit-appearance: none; }
     .btn:active { background-color: #3367D6; }
     input[type="file"] { display: none; }
+    
+    .auth-container { margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center; }
+    .user-info { margin-bottom: 10px; font-weight: bold; color: #333; }
+    #login-btn, #logout-btn { padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 4px; border: none; font-weight: bold; }
+    #login-btn { background-color: #db4437; color: white; }
+    #logout-btn { background-color: #555; color: white; display: none; }
+    #app-tools { display: none; } /* ログイン前は隠す */
+    
     #display-area { width: 100%; max-width: 500px; margin: 0 auto; background: #fff; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ddd; min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     img, iframe { width: 100%; border: none; display: none; border-radius: 4px; height: 400px; object-fit: contain; margin-bottom: 10px; }
     #placeholder { color: #999; line-height: 1.5; }
@@ -18,7 +26,16 @@
 </head>
 <body>
   <h2>便利ツール</h2>
-  <div class="button-container">
+  
+  <!-- 追加: ログインエリア -->
+  <div class="auth-container">
+    <div id="user-info-display" class="user-info">ログインしていません</div>
+    <button id="login-btn">Googleでログイン</button>
+    <button id="logout-btn">ログアウト</button>
+  </div>
+
+  <!-- id="app-tools" で全体を囲み、ログイン前は非表示にする -->
+  <div id="app-tools" class="button-container">
     <label class="btn" for="camera-input">📷 カメラで撮影</label>
     <input type="file" id="camera-input" accept="image/*" capture="environment">
     <label class="btn" for="gallery-input">🖼️ カメラロール</label>
@@ -32,7 +49,64 @@
     <div id="status-message"></div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    // Firebaseの設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyD8bxuySfIohN4BRNsKQAwrAzWZF3SVTJ4",
+      authDomain: "my-project-ucc01.firebaseapp.com",
+      projectId: "my-project-ucc01",
+      storageBucket: "my-project-ucc01.firebasestorage.app",
+      messagingSenderId: "474741078146",
+      appId: "1:474741078146:web:5995130019fd92afd95c9b",
+      measurementId: "G-W96B4XWM0W"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const userInfoDisplay = document.getElementById('user-info-display');
+    const appTools = document.getElementById('app-tools');
+
+    // ログイン処理
+    loginBtn.addEventListener('click', () => {
+      signInWithPopup(auth, provider).catch((error) => {
+        alert("ログインエラー: " + error.message);
+      });
+    });
+
+    // ログアウト処理
+    logoutBtn.addEventListener('click', () => {
+      signOut(auth).catch((error) => {
+        console.error("ログアウトエラー", error);
+      });
+    });
+
+    // 認証状態の監視
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        userInfoDisplay.textContent = `ようこそ、${user.displayName || user.email} さん`;
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        appTools.style.display = 'flex'; // ツールを表示
+      } else {
+        currentUser = null;
+        userInfoDisplay.textContent = "ログインしていません";
+        loginBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+        appTools.style.display = 'none'; // ツールを隠す
+        resetDisplay();
+      }
+    });
+
     const imgEl = document.getElementById('image-display');
     const mapEl = document.getElementById('map-display');
     const placeholder = document.getElementById('placeholder');
@@ -64,6 +138,13 @@
     document.getElementById('gallery-input').addEventListener('change', handleImage);
 
     document.getElementById('gps-button').addEventListener('click', () => {
+      if (!currentUser) {
+        alert("ログインしてください。");
+        return;
+      }
+      // Firebaseから取得した表示名(またはメールアドレス)を使用
+      const userName = currentUser.displayName || currentUser.email;
+
       if (!navigator.geolocation) { 
         alert("お使いのブラウザはGPSに非対応です。"); 
         return; 
@@ -83,24 +164,20 @@
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           
-          // 画面表示用の埋め込みURL
           const embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&output=embed&z=15&hl=ja`;
-          // スプレッドシート記録用の通常のURL
           const mapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ja`;
 
           mapEl.src = embedUrl;
           mapEl.style.display = 'block';
           placeholder.style.display = 'none';
           
-          // バックエンドへの送信ステータスを表示
           statusMessage.textContent = "📝 スプレッドシートに記録中...";
           statusMessage.style.display = 'block';
           statusMessage.style.color = '#555';
 
-          // ★GASのWebアプリURL（デプロイして発行されたURLに書き換えてください）
+          // ★GASのWebアプリURL
           const gasUrl = 'https://script.google.com/macros/s/AKfycbxvbIEtLq4F4JI-fDn9B2xGuLyioJLHOon_Ir2hHvXmjSc7SfgBjLc8dJ9LJ4t9Pt_u/exec';
           
-          // JSONPを利用したクロスドメイン通信
           const callbackName = 'jsonpCallback_' + Date.now();
           window[callbackName] = function(response) {
             if (response.status === "success") {
@@ -112,7 +189,6 @@
             }
             setTimeout(() => { statusMessage.style.display = 'none'; }, 3000);
             
-            // 実行後の後始末
             delete window[callbackName];
             const scriptEl = document.getElementById(callbackName);
             if(scriptEl) scriptEl.remove();
@@ -120,7 +196,9 @@
 
           const script = document.createElement('script');
           script.id = callbackName;
-          script.src = `${gasUrl}?mapUrl=${encodeURIComponent(mapUrl)}&callback=${callbackName}`;
+          
+          // mapUrl に加えて userName もパラメータとして送信するよう変更
+          script.src = `${gasUrl}?mapUrl=${encodeURIComponent(mapUrl)}&user=${encodeURIComponent(userName)}&callback=${callbackName}`;
           document.body.appendChild(script);
         },
         (err) => {
