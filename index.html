@@ -119,11 +119,11 @@
 
     // GAS接続ボタンの処理
     document.getElementById('gas-button').addEventListener('click', () => {
+      // Google WorkspaceのGASはiframe埋め込みがブロックされるため、別タブで開く
+      window.open("https://script.google.com/a/macros/unext-hd.jp/s/AKfycbyGJVUPIFiHEAqkOlphh1pXok2LyElZ0mC6WHwFM0qiXJIIABxfjizewenazKae8plpyw/exec", "_blank");
+      
       resetDisplay();
-      placeholder.innerHTML = "⏳ 読込中...";
-      iframeEl.src = "https://script.google.com/a/macros/unext-hd.jp/s/AKfycbyGJVUPIFiHEAqkOlphh1pXok2LyElZ0mC6WHwFM0qiXJIIABxfjizewenazKae8plpyw/exec";
-      iframeEl.style.display = 'block';
-      placeholder.style.display = 'none';
+      placeholder.innerHTML = "✅ 別タブでGASの画面を開きました";
     });
 
     document.getElementById('gps-button').addEventListener('click', () => {
