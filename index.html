@@ -36,10 +36,7 @@
 
   <!-- id="app-tools" で全体を囲み、ログイン前は非表示にする -->
   <div id="app-tools" class="button-container">
-    <label class="btn" for="camera-input">📷 カメラで撮影</label>
-    <input type="file" id="camera-input" accept="image/*" capture="environment">
-    <label class="btn" for="gallery-input">🖼️ カメラロール</label>
-    <input type="file" id="gallery-input" accept="image/*">
+    <button class="btn" id="gas-button">🔗 GASに接続</button>
     <button class="btn" id="gps-button">📍 GPSで現在地を表示</button>
   </div>
   <div id="display-area">
@@ -120,22 +117,10 @@
       placeholder.innerHTML = "処理中...";
     }
 
-    function handleImage(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      resetDisplay();
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        imgEl.src = event.target.result;
-        imgEl.style.display = 'block';
-        placeholder.style.display = 'none';
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
-    }
-    document.getElementById('camera-input').addEventListener('change', handleImage);
-    document.getElementById('gallery-input').addEventListener('change', handleImage);
+    // GAS接続ボタンの処理
+    document.getElementById('gas-button').addEventListener('click', () => {
+      window.location.href = "https://script.google.com/a/macros/unext-hd.jp/s/AKfycbyGJVUPIFiHEAqkOlphh1pXok2LyElZ0mC6WHwFM0qiXJIIABxfjizewenazKae8plpyw/exec";
+    });
 
     document.getElementById('gps-button').addEventListener('click', () => {
       if (!currentUser) {
