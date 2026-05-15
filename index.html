@@ -123,9 +123,7 @@
 
       if (!navigator.geolocation) { 
         alert("お使いのブラウザはGPSに非対応です。\n位置情報なしで開きます。");
-        window.open(gasAppUrl, "_blank");
-        resetDisplay();
-        placeholder.innerHTML = "✅ 別タブでGASの画面を開きました";
+        window.location.href = gasAppUrl;
         return; 
       }
       
@@ -146,9 +144,8 @@
           // 取得した緯度経度を q= パラメータとして付加
           const targetUrl = `${gasAppUrl}?q=${lat},${lng}`;
           
-          window.open(targetUrl, "_blank");
-          resetDisplay();
-          placeholder.innerHTML = "✅ 別タブでGASの画面を開きました";
+          // ポップアップブロックを回避するため、現在のタブでジャンプする
+          window.location.href = targetUrl;
         },
         (err) => {
           let errorMsg = "位置情報の取得に失敗しました。\n\n";
@@ -164,9 +161,7 @@
           
           // 失敗した場合はパラメータなしの基本URLを開く
           alert(errorMsg + "\n\n※位置情報なしでGASを開きます。");
-          window.open(gasAppUrl, "_blank");
-          resetDisplay();
-          placeholder.innerHTML = "✅ 別タブでGASの画面を開きました";
+          window.location.href = gasAppUrl;
         },
         options
       );
