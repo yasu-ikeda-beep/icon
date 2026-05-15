@@ -9,126 +9,53 @@
     .button-container { display: flex; flex-direction: column; gap: 15px; max-width: 300px; margin: 0 auto 20px auto; }
     .btn { display: block; padding: 15px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); -webkit-appearance: none; }
     .btn:active { background-color: #3367D6; }
-    input[type="file"] { display: none; }
-    
-    .auth-container { margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center; }
-    .user-info { margin-bottom: 10px; font-weight: bold; color: #333; }
-    #login-btn, #logout-btn { padding: 10px 20px; font-size: 14px; cursor: pointer; border-radius: 4px; border: none; font-weight: bold; }
-    #login-btn { background-color: #db4437; color: white; }
-    #logout-btn { background-color: #555; color: white; display: none; }
-    #app-tools { display: none; } /* ログイン前は隠す */
     
     #display-area { width: 100%; max-width: 500px; margin: 0 auto; background: #fff; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ddd; min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    img, iframe { width: 100%; border: none; display: none; border-radius: 4px; height: 400px; object-fit: contain; margin-bottom: 10px; }
+    iframe { width: 100%; border: none; display: none; border-radius: 4px; height: 400px; margin-bottom: 10px; }
     #placeholder { color: #999; line-height: 1.5; }
     #status-message { font-size: 14px; font-weight: bold; color: #0f9d58; margin-top: 10px; display: none; }
   </style>
 </head>
 <body>
-  <h2>便利ツール</h2>
-  
-  <!-- 追加: ログインエリア -->
-  <div class="auth-container">
-    <div id="user-info-display" class="user-info">ログインしていません</div>
-    <button id="login-btn">Googleでログイン</button>
-    <button id="logout-btn">ログアウト</button>
-  </div>
+  <h2>Take-A 起動メニュー</h2>
 
-  <!-- id="app-tools" で全体を囲み、ログイン前は非表示にする -->
-  <div id="app-tools" class="button-container">
-    <button class="btn" id="gas-button">🔗 GASに接続</button>
-    <button class="btn" id="gps-button">📍 GPSで現在地を表示</button>
+  <div class="button-container">
+    <button class="btn" id="gas-button">📍 位置情報を送信して起動</button>
+    <button class="btn" id="gas-no-gps-button">🔗 位置情報なしで起動</button>
+    <button class="btn" id="gps-button">📍 GPSテスト</button>
   </div>
+  
   <div id="display-area">
     <span id="placeholder">ここに結果が表示されます</span>
-    <img id="image-display" src="">
     <iframe id="iframe-display" src=""></iframe>
     <div id="status-message"></div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-    // Firebaseの設定
-    const firebaseConfig = {
-      apiKey: "AIzaSyD8bxuySfIohN4BRNsKQAwrAzWZF3SVTJ4",
-      authDomain: "my-project-ucc01.firebaseapp.com",
-      projectId: "my-project-ucc01",
-      storageBucket: "my-project-ucc01.firebasestorage.app",
-      messagingSenderId: "474741078146",
-      appId: "1:474741078146:web:5995130019fd92afd95c9b",
-      measurementId: "G-W96B4XWM0W"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    let currentUser = null;
-
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const userInfoDisplay = document.getElementById('user-info-display');
-    const appTools = document.getElementById('app-tools');
-
-    // ログイン処理
-    loginBtn.addEventListener('click', () => {
-      signInWithPopup(auth, provider).catch((error) => {
-        alert("ログインエラー: " + error.message);
-      });
-    });
-
-    // ログアウト処理
-    logoutBtn.addEventListener('click', () => {
-      signOut(auth).catch((error) => {
-        console.error("ログアウトエラー", error);
-      });
-    });
-
-    // 認証状態の監視
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        userInfoDisplay.textContent = `ようこそ、${user.displayName || user.email} さん`;
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-        appTools.style.display = 'flex'; // ツールを表示
-      } else {
-        currentUser = null;
-        userInfoDisplay.textContent = "ログインしていません";
-        loginBtn.style.display = 'inline-block';
-        logoutBtn.style.display = 'none';
-        appTools.style.display = 'none'; // ツールを隠す
-        resetDisplay();
-      }
-    });
-
-    const imgEl = document.getElementById('image-display');
+  <script>
     const iframeEl = document.getElementById('iframe-display');
     const placeholder = document.getElementById('placeholder');
     const statusMessage = document.getElementById('status-message');
+    
+    // GASアプリのURLを変数として定義
+    const gasAppUrl = "https://script.google.com/a/macros/unext-hd.jp/s/AKfycbyGJVUPIFiHEAqkOlphh1pXok2LyElZ0mC6WHwFM0qiXJIIABxfjizewenazKae8plpyw/exec";
 
     function resetDisplay() {
-      imgEl.style.display = 'none';
       iframeEl.style.display = 'none';
       statusMessage.style.display = 'none';
       placeholder.style.display = 'block';
       placeholder.innerHTML = "処理中...";
     }
 
-    // GAS接続ボタンの処理
+    // 1. 位置情報を送信して起動
     document.getElementById('gas-button').addEventListener('click', () => {
-      const gasAppUrl = "https://script.google.com/a/macros/unext-hd.jp/s/AKfycbyGJVUPIFiHEAqkOlphh1pXok2LyElZ0mC6WHwFM0qiXJIIABxfjizewenazKae8plpyw/exec";
-
       if (!navigator.geolocation) { 
-        alert("お使いのブラウザはGPSに非対応です。\n位置情報なしで開きます。");
+        alert("お使いのブラウザはGPSに非対応です。\n位置情報なしで起動します。");
         window.location.href = gasAppUrl;
         return; 
       }
       
       resetDisplay();
-      placeholder.innerHTML = "📍 位置情報を取得してGASを開きます...<br><small>※iPhoneの場合は数秒〜15秒ほどかかることがあります</small>";
+      placeholder.innerHTML = "📍 位置情報を取得して起動します...<br><small>※iPhoneの場合は数秒〜15秒ほどかかることがあります</small>";
 
       const options = {
         enableHighAccuracy: false, 
@@ -140,11 +67,7 @@
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          
-          // 取得した緯度経度を q= パラメータとして付加
           const targetUrl = `${gasAppUrl}?q=${lat},${lng}`;
-          
-          // ポップアップブロックを回避するため、現在のタブでジャンプする
           window.location.href = targetUrl;
         },
         (err) => {
@@ -159,20 +82,20 @@
             errorMsg += "原因: 不明なエラー (Code: " + err.code + ")";
           }
           
-          // 失敗した場合はパラメータなしの基本URLを開く
-          alert(errorMsg + "\n\n※位置情報なしでGASを開きます。");
+          alert(errorMsg + "\n\n※位置情報なしで起動します。");
           window.location.href = gasAppUrl;
         },
         options
       );
     });
 
-    document.getElementById('gps-button').addEventListener('click', () => {
-      if (!currentUser) {
-        alert("ログインしてください。");
-        return;
-      }
+    // 2. 位置情報なしで起動
+    document.getElementById('gas-no-gps-button').addEventListener('click', () => {
+      window.location.href = gasAppUrl;
+    });
 
+    // 3. GPSテスト（現在地を表示するだけ）
+    document.getElementById('gps-button').addEventListener('click', () => {
       if (!navigator.geolocation) { 
         alert("お使いのブラウザはGPSに非対応です。"); 
         return; 
@@ -188,55 +111,19 @@
       };
 
       navigator.geolocation.getCurrentPosition(
-        async (pos) => {
+        (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           
           const embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&output=embed&z=15&hl=ja`;
-          const mapUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ja`;
 
           iframeEl.src = embedUrl;
           iframeEl.style.display = 'block';
           placeholder.style.display = 'none';
           
-          statusMessage.textContent = "📝 スプレッドシートに記録中...";
+          statusMessage.textContent = "✅ 位置情報を取得しました";
           statusMessage.style.display = 'block';
-          statusMessage.style.color = '#555';
-
-          try {
-            // ★ Firebaseから最新のIDトークン（JWT）を取得する
-            const idToken = await currentUser.getIdToken(true);
-
-            // ★GASのWebアプリURL
-            const gasUrl = 'https://script.google.com/macros/s/AKfycbxvbIEtLq4F4JI-fDn9B2xGuLyioJLHOon_Ir2hHvXmjSc7SfgBjLc8dJ9LJ4t9Pt_u/exec';
-            
-            const callbackName = 'jsonpCallback_' + Date.now();
-            window[callbackName] = function(response) {
-              if (response.status === "success") {
-                statusMessage.textContent = "✅ スプレッドシートに記録しました！";
-                statusMessage.style.color = '#0f9d58';
-              } else {
-                statusMessage.textContent = "❌ 記録失敗: " + response.message;
-                statusMessage.style.color = '#d23f31';
-              }
-              setTimeout(() => { statusMessage.style.display = 'none'; }, 3000);
-              
-              delete window[callbackName];
-              const scriptEl = document.getElementById(callbackName);
-              if(scriptEl) scriptEl.remove();
-            };
-
-            const script = document.createElement('script');
-            script.id = callbackName;
-            
-            // ★ userNameの代わりにトークンを送信するように変更
-            script.src = `${gasUrl}?mapUrl=${encodeURIComponent(mapUrl)}&token=${encodeURIComponent(idToken)}&callback=${callbackName}`;
-            document.body.appendChild(script);
-
-          } catch (tokenError) {
-             statusMessage.textContent = "❌ 認証エラー: " + tokenError.message;
-             statusMessage.style.color = '#d23f31';
-          }
+          statusMessage.style.color = '#0f9d58';
         },
         (err) => {
           let errorMsg = "位置情報の取得に失敗しました。\n\n";
